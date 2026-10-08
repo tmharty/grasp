@@ -15,89 +15,106 @@ __grants__ = "80NSSC20K1057"
 
 ###########################################################################
 #
-# Common module functions to include
+# Public API
+#
+# Every public name is resolved lazily (PEP 562) so that importing the
+# signal-processing core -- grasp.processing, grasp.postprocessing,
+# grasp.datuming -- pulls in only numpy and scipy. Names that need the
+# ``planetary`` extra (SPICE, PDS readers, DEM/CRS, SEG-Y, plotting) are
+# imported the first time they are accessed, e.g. ``grasp.radar_sounder``.
+#
+# Keep ``_LAZY`` in sync with ``__all__`` below.
 #
 ###########################################################################
-from .common import determine_observation_years
+_LAZY: dict[str, tuple[str, str]] = {
+    # Common
+    "determine_observation_years": ("grasp.common", "determine_observation_years"),
+    # Input
+    "check_supported": ("grasp.input", "check_supported"),
+    "grab_radar_params": ("grasp.input", "grab_radar_params"),
+    "identify_file": ("grasp.input", "identify_file"),
+    "load": ("grasp.input", "load"),
+    "load_job": ("grasp.input", "load_job"),
+    "read": ("grasp.input", "read"),
+    # Processing (numpy/scipy only)
+    "adaptive_spectral_notch": ("grasp.processing", "adaptive_spectral_notch"),
+    "broadening_factor": ("grasp.processing", "broadening_factor"),
+    "create_complex_baseband_chirp": ("grasp.processing", "create_complex_baseband_chirp"),
+    "create_filter": ("grasp.processing", "create_filter"),
+    "create_sharad_calibrated_chirp": ("grasp.processing", "create_sharad_calibrated_chirp"),
+    "form_window": ("grasp.processing", "form_window"),
+    "form_window_bandlimited": ("grasp.processing", "form_window_bandlimited"),
+    "ionosphere_campbell": ("grasp.processing", "ionosphere_campbell"),
+    "ionospheric_compensation": ("grasp.processing", "ionospheric_compensation"),
+    "ionosphere_contrast": ("grasp.processing", "ionosphere_contrast"),
+    "range_compress": ("grasp.processing", "range_compress"),
+    "suppress_emi": ("grasp.processing", "suppress_emi"),
+    "threshold_emi": ("grasp.processing", "threshold_emi"),
+    "to_complex_baseband": ("grasp.processing", "to_complex_baseband"),
+    # The radar_sounder class
+    "radar_sounder": ("grasp.instantiator", "radar_sounder"),
+    # The Processor
+    "print_job_summary": ("grasp.grasp", "print_job_summary"),
+    "process": ("grasp.grasp", "process_job"),
+    # SPICE routines
+    "compute_geodetic_position": ("grasp.spice", "compute_geodetic_position"),
+    "compute_geometry": ("grasp.spice", "compute_geometry"),
+    "compute_sza": ("grasp.spice", "compute_sza"),
+    "compute_state_vectors": ("grasp.spice", "compute_state_vectors"),
+    "decompose_velocity": ("grasp.spice", "decompose_velocity"),
+    "et2utc": ("grasp.spice", "et2utc"),
+    "find_mk_files": ("grasp.spice", "find_mk_files"),
+    "furnish": ("grasp.spice", "furnish"),
+    "get_radii": ("grasp.spice", "get_radii"),
+    "grab_spice_params": ("grasp.spice", "grab_spice_params"),
+    "print_mk_paths": ("grasp.spice", "print_mk_paths"),
+    "unload": ("grasp.spice", "unload"),
+    "utc2et": ("grasp.spice", "utc2et"),
+    # Geospatial routines
+    "extract_dem_swath": ("grasp.geospatial.extract_dem_swath", "extract_dem_swath"),
+    "mars_lle_crs": ("grasp.geospatial.crs", "MARS_LLE"),
+    "moon_lle_crs": ("grasp.geospatial.crs", "MOON_LLE"),
+    "phobos_lle_crs": ("grasp.geospatial.crs", "PHOBOS_LLE"),
+    "gcs_2000_crs": ("grasp.geospatial.crs", "gcs_2000_crs"),
+    "geocent_crs": ("grasp.geospatial.crs", "geocent_crs"),
+    # Azimuth processing (numpy/scipy only)
+    "unfocused": ("grasp.processing.sar.unfocused", "unfocused"),
+    "backscatter": ("grasp.processing.sar.range_doppler", "backscatter"),
+    "range_doppler": ("grasp.processing.sar.range_doppler", "range_doppler"),
+    "determine_aperture_bounds": ("grasp.processing.sar.utils", "determine_aperture_bounds"),
+    "determine_output_frames": ("grasp.processing.sar.utils", "determine_output_frames"),
+    "determine_aperture_resolution": ("grasp.processing.sar.utils", "determine_aperture_resolution"),
+    "determine_aperture_step": ("grasp.processing.sar.utils", "determine_aperture_step"),
+    "max_unaliased_aperture": ("grasp.processing.sar.utils", "max_unaliased_aperture"),
+    "check_aperture": ("grasp.processing.sar.utils", "check_aperture"),
+    "multilook": ("grasp.postprocessing.multilook", "multilook"),
+    # Output
+    "to_image": ("grasp.output.images", "to_image"),
+    "radargram_with_dem": ("grasp.output.images", "radargram_with_dem"),
+    "plot_dem_swath": ("grasp.output.plotting", "plot_dem_swath"),
+    "write_grasp_output": ("grasp.output.writers", "write_grasp_output"),
+    "export_segy": ("grasp.output.writers", "export_segy"),
+    # Simulation
+    "simulate_clutter": ("grasp.simulation.clutter", "simulate_clutter"),
+}
 
-###########################################################################
-#
-# Input module functions to include
-#
-###########################################################################
-from .input import (check_supported, grab_radar_params, identify_file,
-                    load, load_job,read)
-###########################################################################
-#
-# Processing module functions to include
-#
-###########################################################################
-from .processing import (adaptive_spectral_notch, broadening_factor, create_complex_baseband_chirp,
-                         create_filter, create_sharad_calibrated_chirp, form_window,
-                         form_window_bandlimited, ionosphere_campbell, ionospheric_compensation,
-                         ionosphere_contrast, range_compress, suppress_emi, threshold_emi, to_complex_baseband,
-                         )
 
-###########################################################################
-#
-# The radar_sounder class
-#
-###########################################################################
-from .instantiator import radar_sounder
+def __getattr__(name: str):
+    """Resolve a public name on first access (PEP 562)."""
+    try:
+        module_name, attr = _LAZY[name]
+    except KeyError:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}") from None
+    from importlib import import_module
 
-###########################################################################
-#
-# The Processor
-#
-###########################################################################
-from .grasp import (
-    print_job_summary,
-    process_job as process
-)
-###########################################################################
-#
-# SPICE Routines TODO Audit SPICE routines
-#
-###########################################################################
-from .spice import (compute_geodetic_position, compute_geometry,
-                    compute_sza, compute_state_vectors,
-                    decompose_velocity, et2utc,
-                    find_mk_files, furnish, get_radii,
-                    grab_spice_params, print_mk_paths,
-                    unload, utc2et)
-###########################################################################
-#
-# Geospatial Routines TODO Audit Geospatial routines
-#
-###########################################################################
-from .geospatial.extract_dem_swath import extract_dem_swath
-from .geospatial.crs import (
-    MARS_LLE as mars_lle_crs,
-    MOON_LLE as moon_lle_crs,
-    PHOBOS_LLE as phobos_lle_crs,
-    gcs_2000_crs, geocent_crs
-)
+    value = getattr(import_module(module_name), attr)
+    globals()[name] = value  # cache so __getattr__ runs once per name
+    return value
 
-#
-# Azimuth Processing TODO Audit Azimuth Processing
-#
-from .processing.sar.unfocused import unfocused
-from .processing.sar.range_doppler import backscatter, range_doppler
-from .processing.sar.utils import (determine_aperture_bounds, determine_output_frames,
-                                   determine_aperture_resolution, determine_aperture_step,
-                                   max_unaliased_aperture, check_aperture)
-from .postprocessing.multilook import multilook
-#
-# Output module functions to include TODO Audit Output module
-#
-from .output.images import to_image, radargram_with_dem
-from .output.plotting import plot_dem_swath
-from .output.writers import write_grasp_output, export_segy
 
-# TODO Audit Simulation module
-from .simulation.clutter import simulate_clutter
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(_LAZY))
 
-# TODO audit plotting module
 
 __all__ = [
     ###################################################################################################################
