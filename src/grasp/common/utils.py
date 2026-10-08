@@ -7,8 +7,6 @@ from typing import Any, Mapping, Sequence, TypeAlias, cast
 
 import numpy as np
 from numpy.typing import NDArray
-from pds4_tools import pds4_read
-from pvl import load
 
 PVLScalar: TypeAlias = None | bool | int | float | str
 PVLJSON: TypeAlias = PVLScalar | list["PVLJSON"] | dict[str, "PVLJSON"]
@@ -154,6 +152,8 @@ def parse_pds_lbl(lbl_path: str | Path) -> dict[str, PVLJSON]:
     Raises:
         TypeError: If the PVL parse result cannot be converted to a dict.
     """
+    from pvl import load  # planetary extra; imported lazily
+
     lbl = load(lbl_path)
     result = convert_pvl_to_dict(lbl)
 
@@ -176,6 +176,8 @@ def parse_pds_xml(xml_path: str | Path) -> dict[str, Any]:
     Raises:
         TypeError: If the label conversion does not return a dict.
     """
+    from pds4_tools import pds4_read  # planetary extra; imported lazily
+
     lbl = pds4_read(xml_path)
     result = lbl.label.to_dict()
 
